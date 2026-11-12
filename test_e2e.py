@@ -11,7 +11,7 @@ import sys, json, time, datetime
 import urllib.request, urllib.error
 
 HOST = sys.argv[1] if len(sys.argv) > 1 else "localhost"
-BASE = f"http://{HOST}:8881"
+BASE = f"http://{HOST}:42881"
 
 PACS008_USD = """<?xml version="1.0" encoding="UTF-8"?>
 <Document xmlns="urn:iso:std:iso:20022:tech:xsd:pacs.008.001.10">

@@ -28,26 +28,38 @@ ssh -i "$SSH_KEY" "$DEPLOY_USER@$DEPLOY_IP" "
   cd $DEPLOY_DIR
 
   # Build and start via compose
-  docker-compose down || true
-  docker-compose build --no-cache
-  docker-compose up -d
+  # RHEL9 uses podman-docker shim — use podman-compose or podman directly
+  if command -v podman-compose &>/dev/null; then
+    podman-compose down || true
+    podman-compose up -d --build
+  else
+    # Podman with docker-compose shim
+    podman pod rm -f shawn-m1-pod 2>/dev/null || true
+    podman build -t qvtx/shawn-m1-intake:latest .
+    podman run -d --name shawn-m1 --restart=always \
+      -p 42881:42881 \
+      -v shawn_m1_ledger:/opt/shawn-m1/ledger \
+      -v shawn_m1_logs:/opt/shawn-m1/logs \
+      -e M1_PORT=42881 \
+      qvtx/shawn-m1-intake:latest
+  fi
 
   sleep 3
-  docker-compose ps
+  podman ps --filter name=shawn-m1
   echo ''
-  docker-compose logs --tail=20
+  podman logs shawn-m1 --tail=20 2>/dev/null || true
 "
 
 echo ""
 echo "[SHAWN-M1] Health check:"
 sleep 2
-curl -s "http://$DEPLOY_IP:8881/health" | python3 -m json.tool || echo "Service still starting..."
+curl -s "http://$DEPLOY_IP:42881/health" | python3 -m json.tool || echo "Service still starting..."
 
 echo ""
 echo "LIVE:"
-echo "  Health:  http://$DEPLOY_IP:8881/health"
-echo "  Ledger:  http://$DEPLOY_IP:8881/"
-echo "  Receive: http://$DEPLOY_IP:8881/receive  (POST pacs.008 XML)"
+echo "  Health:  http://$DEPLOY_IP:42881/health"
+echo "  Ledger:  http://$DEPLOY_IP:42881/"
+echo "  Receive: http://$DEPLOY_IP:42881/receive  (POST pacs.008 XML)"
 echo ""
 echo "  USD IBAN: LU680010000000000062  (acct 000000062)"
 echo "  EUR IBAN: DE28500700100000000063  (acct 000000063)"

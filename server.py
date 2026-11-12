@@ -32,7 +32,7 @@ CFG = {
     },
     "byteid_api":   "https://66.29.143.215:5002/api/fold",
     "ledger_path":  "/opt/shawn-m1/ledger/registrations.jsonl",
-    "port":         8881,
+    "port":         42881,
     "q4": {
         "phi_inv":   0.618034,
         "coherence": 0.882,

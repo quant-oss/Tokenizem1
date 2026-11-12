@@ -10,7 +10,7 @@ WorkingDirectory=/opt/shawn-m1
 ExecStart=/usr/bin/python3 /opt/shawn-m1/server.py
 Restart=always
 RestartSec=5
-Environment=M1_PORT=8881
+Environment=M1_PORT=42881
 StandardOutput=journal
 StandardError=journal
 

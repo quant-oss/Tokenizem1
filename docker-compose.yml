@@ -7,12 +7,12 @@ services:
     container_name: shawn-m1
     restart: always
     ports:
-      - "8881:8881"
+      - "42881:42881"
     volumes:
       - shawn_ledger:/opt/shawn-m1/ledger
       - shawn_logs:/opt/shawn-m1/logs
     environment:
-      - M1_PORT=8881
+      - M1_PORT=42881
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8881/health')"]
       interval: 30s
