@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  shawn-m1:
+    build: .
+    image: qvtx/shawn-m1-intake:latest
+    container_name: shawn-m1
+    restart: always
+    ports:
+      - "8881:8881"
+    volumes:
+      - shawn_ledger:/opt/shawn-m1/ledger
+      - shawn_logs:/opt/shawn-m1/logs
+    environment:
+      - M1_PORT=8881
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8881/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    labels:
+      - "qvtx.container=shawn-m1"
+      - "qvtx.byteid=QVTX-53686177-6e204d31-1a1d2226-436f"
+      - "qvtx.protocol=ISO-20022-pacs.008"
+
+volumes:
+  shawn_ledger:
+    name: shawn_m1_ledger
+  shawn_logs:
+    name: shawn_m1_logs

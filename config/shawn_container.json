@@ -1,0 +1,43 @@
+{
+  "container_id": "SHAWN-Q4-M1-CONTAINER-001",
+  "byteid": "QVTX-53686177-6e204d31-1a1d2226-436f",
+  "name": "Shawn",
+  "omnl_client_id": 30,
+  "omnl_office_id": 1,
+  "omnl_external_id": "SHAWN-Q4-M1-CONTAINER-001",
+  "accounts": {
+    "USD": {
+      "savings_id": 62,
+      "account_no": "000000062",
+      "iban": "LU680010000000000062",
+      "currency": "USD"
+    },
+    "EUR": {
+      "savings_id": 63,
+      "account_no": "000000063",
+      "iban": "DE28500700100000000063",
+      "currency": "EUR"
+    }
+  },
+  "q4": {
+    "phi_inv": 0.618034,
+    "coherence": 0.882,
+    "freq_hz": 8825
+  },
+  "service": {
+    "port": 8881,
+    "host": "0.0.0.0",
+    "deploy_target": "qxrp",
+    "deploy_ip": "209.74.87.249"
+  },
+  "ledger": {
+    "path": "/opt/shawn-m1/ledger/registrations.jsonl"
+  },
+  "iso20022": {
+    "receive_endpoint": "/receive",
+    "intake_message": "pacs.008.001.10",
+    "receipt_message": "camt.054.001.10"
+  },
+  "created": "2026-11-12",
+  "jurisdiction": "QVTX Ecosystem / OMNL / Head Office"
+}
