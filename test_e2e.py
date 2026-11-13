@@ -5,7 +5,7 @@ End-to-end test: POST pacs.008 → verify Q4 gate + OMNL credit → check camt.0
 Run against local container or qxrp.
 Usage:
   python3 test_e2e.py                        # localhost:8881
-  python3 test_e2e.py 209.74.87.249          # qxrp
+  python3 test_e2e.py <host>                 # remote host
 """
 import sys, json, time, datetime
 import urllib.request, urllib.error

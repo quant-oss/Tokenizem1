@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-13  
 **Container Ref:** SM1-53686177-6e204d31  
-**Host:** qxrp (209.74.87.249)  
+**Host:** qxrp  
 **Port:** 42881
 
 ---
@@ -49,7 +49,6 @@ Volumes survive container restarts and OS reboots.
 | GET | `/ledger` | JSON ledger |
 | GET | `/` | HTML ledger |
 
-**IPv4:** `http://209.74.87.249:42881/health`  
 **IPv6 (HE):** `http://[2001:470:1f27:a5::1]:42881/health`
 
 ---
@@ -88,7 +87,7 @@ Build: `podman build -t qvtx/shawn-m1-intake:latest .`
 
 | Item | Unblocks |
 |------|---------|
-| X-chain cascade (Polygon, D-BIS, 8825) | Louis names target per tokenization |
-| Token contract deploy on chain 42000 | Louis fires `--execute` |
+| X-chain cascade (Polygon, D-BIS, 8825) | Named per tokenization event |
+| Token contract deploy on chain 42000 | Authorized `--execute` to fire |
 | Pool creation on chain 42000 | After token deploy |
 | Release gate auto-watch service | Supercore (203.161.33.24) online |

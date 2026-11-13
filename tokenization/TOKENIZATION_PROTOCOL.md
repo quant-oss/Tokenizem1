@@ -125,7 +125,7 @@ decimals: 6
 ```
 
 Token contract: deploy on chain 42000 using Paris EVM (--evm-version paris, no PUSH0).
-Private RPC only: 192.168.11.211 (LAN) or qxrp 42000 node.
+Private RPC only — configured via environment.
 Tokens minted to QVTX reserve wallet — NOT to any external address until release gate fires.
 
 ---
@@ -145,7 +145,7 @@ Each X-chain cascade event:
 2. Anchor on chain 42000 (calldata: `QVTX-XCHAIN {chain_id} {token_byteid}`)
 3. Token available in pool on each chain (WETH pair on D-BIS per existing pool pattern)
 
-X-chain cascades are STAGED until Louis names each target chain for a specific tokenization.
+X-chain cascades are STAGED until the authorized operator names each target chain for a specific tokenization.
 
 ---
 
@@ -218,7 +218,7 @@ Returns: token state (HELD / RELEASED), reserve status, pool depth, cascade chai
 
 | Item | Why staged | What unblocks it |
 |------|-----------|-----------------|
-| X-chain cascade (Polygon, D-BIS, 8825) | Louis names each target per tokenization | Louis: "cascade to [chain]" |
-| Token contract deploy on chain 42000 | Needs private RPC + signing key to fire | Louis fires `--execute` |
+| X-chain cascade (Polygon, D-BIS, 8825) | Operator names each target per tokenization | Operator: "cascade to [chain]" |
+| Token contract deploy on chain 42000 | Needs private RPC + signing key to fire | Authorized `--execute` |
 | Pool creation on chain 42000 | Needs token address from deploy | After token deploy |
 | Release gate auto-watch service | Service on supercore (down) | Supercore back online |

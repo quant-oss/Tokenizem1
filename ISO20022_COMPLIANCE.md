@@ -14,7 +14,7 @@ Source: https://www.iso20022.org/iso-20022-message-definitions
 
 ---
 
-## M1 Intake Procedure (pacs.008 → Q4 Gate → OMNL → camt.054)
+## M1 Intake Procedure (pacs.008 → Q4 Gate → Credit → camt.054)
 
 Fully compliant with ISO 20022 Payment Clearing and Settlement (PCSS) workflow:
 
@@ -32,12 +32,11 @@ Fully compliant with ISO 20022 Payment Clearing and Settlement (PCSS) workflow:
 - Messages scoring below threshold receive HTTP 422 and are logged as `Q4_REJECT`
 - This gate enforces QVTX Delivery Process (QDP) Step 7: **golden fit-gate**
 
-### Step 3 — CREDIT (OMNL Fineract)
-- Credits the appropriate OMNL savings account based on currency:
+### Step 3 — CREDIT
+- Credits the appropriate savings account based on currency:
   - USD → Account `000000062` (IBAN: LU680010000000000062)
   - EUR → Account `000000063` (IBAN: DE28500700100000000063)
-- Posts via Fineract `/savingsaccounts/{id}/transactions?command=deposit`
-- Fineract tenant: `omnl` (omnl.hybxfinance.io)
+- Credit endpoint configured via `M1_CREDIT_BASE` environment variable
 
 ### Step 4 — BYTEID FOLD
 - Folds `M1|{tx_ref}|{amount}|{ccy}|{raw_hash}` → ByteID
@@ -46,7 +45,7 @@ Fully compliant with ISO 20022 Payment Clearing and Settlement (PCSS) workflow:
 
 ### Step 5 — LEDGER REGISTRATION
 - Appended to `/opt/shawn-m1/ledger/registrations.jsonl`
-- Each entry carries: `ts`, `tx_ref`, `amount`, `currency`, `byteid`, `q4_score`, `omnl_credit`, `status`, `iban`
+- Each entry carries: `ts`, `tx_ref`, `amount`, `currency`, `byteid`, `q4_score`, `credit_ok`, `status`, `iban`
 - Status values: `RECEIVED`, `RECEIVED_PENDING_CREDIT`, `Q4_REJECT`
 
 ### Step 6 — ISSUE RECEIPT (camt.054.001.10)
@@ -72,8 +71,8 @@ Fully compliant with ISO 20022 Payment Clearing and Settlement (PCSS) workflow:
 
 ---
 
-## SWIFT/INFIDIME Debit Path
-Incoming SWIFT MT103/MT202 → INFIDIME DEUTDEFFXXX (DE39500700100036816700) → OMNL Fineract → pacs.008 posted to this endpoint.
+## Inbound SWIFT Path
+Incoming SWIFT MT103/MT202 → correspondent bank → pacs.008 posted to this endpoint.
 
 ---
 

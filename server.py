@@ -2,7 +2,7 @@
 # QVTX-CAPABILITIES: byteid, q4-coherence-gate, omnl-credit, ledger-registration, tokenization
 """
 Shawn M1 Intake — Q4 Core Container
-ISO 20022 auto-receive gate: pacs.008 in → Q4 gate → OMNL credit → ByteID → ledger → camt.054 out
+ISO 20022 auto-receive gate: pacs.008 in → Q4 gate → credit → ByteID → ledger → camt.054 out
 """
 import os, json, time, hashlib, base64, datetime, logging, threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -24,9 +24,9 @@ CFG = {
     "container_id": "SHAWN-M1-CONTAINER-001",
     "byteid":       "QVTX-53686177-6e204d31-1a1d2226-436f",
     "container_ref":"SM1-53686177-6e204d31",
-    "omnl_base":    "https://omnl.hybxfinance.io/fineract-provider/api/v1",
-    "omnl_creds":   base64.b64encode(b"app.omnl:S!Tw'+LHT(Twxi+BE3sk").decode(),
-    "omnl_tenant":  "omnl",
+    "omnl_base":    os.environ.get("M1_CREDIT_BASE", ""),
+    "omnl_creds":   os.environ.get("M1_CREDIT_CREDS", ""),
+    "omnl_tenant":  os.environ.get("M1_CREDIT_TENANT", "omnl"),
     "accounts": {
         "USD": {"savingsId": 62, "accountNo": "000000062", "iban": "LU680010000000000062"},
         "EUR": {"savingsId": 63, "accountNo": "000000063", "iban": "DE28500700100000000063"},
