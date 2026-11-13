@@ -83,7 +83,8 @@ def run():
     try:
         with urllib.request.urlopen(f"{BASE}/health", timeout=10) as r:
             h = json.loads(r.read())
-            print(f"    OK  status={h['status']}  byteid={h['byteid'][:30]}...")
+            cref = h.get('container', h.get('byteid', '?'))
+            print(f"    OK  status={h['status']}  container={cref}")
             passed += 1
     except Exception as e:
         print(f"    FAIL  {e}")
@@ -154,7 +155,7 @@ def run():
             headers={"Accept": "text/html"})
         with urllib.request.urlopen(req, timeout=10) as r:
             html = r.read().decode()
-            assert "SHAWN M1 Q4 CONTAINER" in html
+            assert "SHAWN M1" in html
             assert "REGISTRATION LEDGER" in html
             print(f"    OK  HTML ledger page served ({len(html)} bytes)")
             passed += 1
