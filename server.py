@@ -1,5 +1,5 @@
 # QVTX-BOUNDARY: ISO 20022 pacs.008/camt.054 — receives from SWIFT/INFIDIME/external TPPs
-# QVTX-CAPABILITIES: byteid, q4-coherence-gate, omnl-credit, ledger-registration
+# QVTX-CAPABILITIES: byteid, q4-coherence-gate, omnl-credit, ledger-registration, tokenization
 """
 Shawn M1 Intake — Q4 Core Container
 ISO 20022 auto-receive gate: pacs.008 in → Q4 gate → OMNL credit → ByteID → ledger → camt.054 out
@@ -32,6 +32,7 @@ CFG = {
     },
     "byteid_api":   "https://66.29.143.215:5002/api/fold",
     "ledger_path":  "/opt/shawn-m1/ledger/registrations.jsonl",
+    "token_path":   "/opt/shawn-m1/ledger/tokens.jsonl",
     "port":         42881,
     "q4": {
         "phi_inv":   0.618034,
@@ -41,6 +42,67 @@ CFG = {
 }
 os.makedirs("/opt/shawn-m1/logs",   exist_ok=True)
 os.makedirs("/opt/shawn-m1/ledger", exist_ok=True)
+
+# ── Tokenization Protocol ────────────────────────────────────────────────
+# Reserve rule:  20% of tokenized value held on reserve before mint
+# Release gate:  10% fiat payment (or equivalent) required to release tokens
+# Q4 gate:       each step scored ≥ 1/φ = 0.618034
+
+RESERVE_RATIO  = 0.20   # 20% of intake value held on reserve
+RELEASE_RATIO  = 0.10   # 10% of intake value required as fiat to release tokens
+
+def q4_tokenize_score(record_str: str) -> float:
+    """Score a tokenization record for Q4 coherence."""
+    score = 0.0
+    if "TOKENIZE:" in record_str:  score += 0.25
+    if "BYTEID:"   in record_str:  score += 0.20
+    if "RESERVE:"  in record_str:  score += 0.20
+    if "AMOUNT:"   in record_str:  score += 0.20
+    if "CCY:"      in record_str:  score += 0.15
+    return round(min(score, 1.0), 6)
+
+def token_ledger_append(entry: dict):
+    with _ledger_lock:
+        with open(CFG["token_path"], "a") as f:
+            f.write(json.dumps(entry) + "\n")
+    log.info(f"TOKEN: {entry.get('token_byteid')} | {entry.get('state')} | {entry.get('amount')} {entry.get('currency')}")
+
+def token_ledger_read() -> list:
+    try:
+        with open(CFG["token_path"]) as f:
+            return [json.loads(l) for l in f if l.strip()]
+    except FileNotFoundError:
+        return []
+
+def token_find(token_byteid: str) -> dict:
+    for t in reversed(token_ledger_read()):
+        if t.get("token_byteid") == token_byteid:
+            return t
+    return {}
+
+def build_anchor_calldata(event: str, byteid: str) -> str:
+    return f"QVTX-TOKENIZE {event} {byteid}"
+
+def q4_anchor_record(token_byteid: str, event: str, amount: float, currency: str, details: dict) -> dict:
+    """Build the Q4-scored anchor record for chain 42000 + Polygon."""
+    record_str = f"TOKENIZE:{event}:BYTEID:{token_byteid}:RESERVE:{amount * RESERVE_RATIO:.4f}:AMOUNT:{amount}:CCY:{currency}"
+    q4_score = q4_tokenize_score(record_str)
+    return {
+        "record_str": record_str,
+        "q4_score":   q4_score,
+        "q4_pass":    q4_score >= CFG["q4"]["phi_inv"],
+        "calldata_42000":  build_anchor_calldata(event, token_byteid),
+        "calldata_polygon": json.dumps({
+            "event":          event,
+            "token_byteid":   token_byteid,
+            "amount":         amount,
+            "currency":       currency,
+            "reserve":        round(amount * RESERVE_RATIO, 4),
+            "release_req":    round(amount * RELEASE_RATIO, 4),
+            "ts":             datetime.datetime.utcnow().isoformat() + "Z",
+            **details
+        })
+    }
 
 # ── Q4 Coherence Gate ────────────────────────────────────────────────────
 def q4_coherence_score(xml_text: str) -> float:
@@ -235,6 +297,8 @@ class M1IntakeHandler(BaseHTTPRequestHandler):
                     self._json(200, {"count": 0, "entries": []})
         elif self.path == "/":
             self._ledger_html()
+        elif self.path.startswith("/token/"):
+            self._token_status(self.path[7:].strip("/"))
         else:
             self._json(404, {"error": "not found"})
 
@@ -313,12 +377,20 @@ class M1IntakeHandler(BaseHTTPRequestHandler):
         self.wfile.write(resp)
 
     def do_POST(self):
-        if self.path not in ("/receive", "/m1"):
+        if self.path in ("/receive", "/m1"):
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length).decode("utf-8", errors="replace")
+            self._process_m1(body)
+        elif self.path == "/tokenize":
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length).decode("utf-8", errors="replace")
+            self._process_tokenize(body)
+        elif self.path == "/release":
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length).decode("utf-8", errors="replace")
+            self._process_release(body)
+        else:
             self._json(404, {"error": "endpoint not found"})
-            return
-        length = int(self.headers.get("Content-Length", 0))
-        body = self.rfile.read(length).decode("utf-8", errors="replace")
-        self._process_m1(body)
 
     def _process_m1(self, xml_text: str):
         ts = datetime.datetime.utcnow().isoformat() + "Z"
@@ -374,6 +446,148 @@ class M1IntakeHandler(BaseHTTPRequestHandler):
         self.send_header("X-QVTX-Status", "RECEIVED")
         self.end_headers()
         self.wfile.write(camt.encode())
+
+    def _token_status(self, token_byteid: str):
+        token = token_find(token_byteid)
+        if not token:
+            self._json(404, {"error": "token not found", "token_byteid": token_byteid})
+            return
+        self._json(200, token)
+
+    def _process_tokenize(self, body: str):
+        ts = datetime.datetime.utcnow().isoformat() + "Z"
+        try:
+            req = json.loads(body)
+        except Exception:
+            self._json(400, {"error": "invalid JSON"}); return
+
+        intake_byteid     = req.get("intake_byteid", "")
+        amount            = float(req.get("amount", 0))
+        currency          = req.get("currency", "USD").upper()
+        reserve_confirmed = req.get("reserve_confirmed", False)
+        reserve_byteid    = req.get("reserve_byteid", "")
+
+        if not intake_byteid or amount <= 0:
+            self._json(400, {"error": "intake_byteid and amount required"}); return
+
+        reserve_required = round(amount * RESERVE_RATIO, 4)
+        release_required = round(amount * RELEASE_RATIO, 4)
+
+        # Q4 gate on the tokenization record
+        token_content = f"TOKEN|{intake_byteid}|{amount}|{currency}|{int(time.time())}"
+        token_byteid  = fold_to_byteid(token_content)
+        anchor = q4_anchor_record(token_byteid, "MINT", amount, currency, {
+            "intake_byteid":  intake_byteid,
+            "reserve_byteid": reserve_byteid,
+        })
+
+        if not anchor["q4_pass"]:
+            self._json(422, {"error": "Q4 gate failed on tokenize record", "score": anchor["q4_score"]}); return
+
+        entry = {
+            "ts":               ts,
+            "token_byteid":     token_byteid,
+            "intake_byteid":    intake_byteid,
+            "reserve_byteid":   reserve_byteid,
+            "amount":           amount,
+            "currency":         currency,
+            "reserve_required": reserve_required,
+            "release_required": release_required,
+            "reserve_confirmed":reserve_confirmed,
+            "state":            "MINTED_HELD",
+            "q4_score":         anchor["q4_score"],
+            "anchor_42000":     anchor["calldata_42000"],
+            "anchor_polygon":   anchor["calldata_polygon"],
+            "chains":           ["42000"],
+            "pools":            [],
+            "note": f"Tokens HELD. Release requires {release_required} {currency} fiat payment."
+        }
+        token_ledger_append(entry)
+        ledger_append({**entry, "type": "TOKENIZE"})
+
+        log.info(f"TOKENIZE: {token_byteid} | {amount} {currency} | HELD | reserve={reserve_required} | release_req={release_required}")
+        self.send_response(202)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("X-QVTX-Token-ByteID", token_byteid)
+        self.send_header("X-QVTX-Q4-Score", str(anchor["q4_score"]))
+        self.end_headers()
+        self.wfile.write(json.dumps({
+            "status":           "MINTED_HELD",
+            "token_byteid":     token_byteid,
+            "amount":           amount,
+            "currency":         currency,
+            "reserve_required": reserve_required,
+            "release_required": release_required,
+            "anchor_42000":     anchor["calldata_42000"],
+            "note":             entry["note"]
+        }, indent=2).encode())
+
+    def _process_release(self, body: str):
+        ts = datetime.datetime.utcnow().isoformat() + "Z"
+        try:
+            req = json.loads(body)
+        except Exception:
+            self._json(400, {"error": "invalid JSON"}); return
+
+        token_byteid     = req.get("token_byteid", "")
+        payment_ref      = req.get("payment_ref", "")
+        payment_amount   = float(req.get("payment_amount", 0))
+        payment_currency = req.get("payment_currency", "USD").upper()
+        payment_proof    = req.get("payment_proof", "")
+
+        if not token_byteid:
+            self._json(400, {"error": "token_byteid required"}); return
+
+        token = token_find(token_byteid)
+        if not token:
+            self._json(404, {"error": "token not found"}); return
+        if token.get("state") == "RELEASED":
+            self._json(409, {"error": "already released", "token": token}); return
+
+        release_required = token.get("release_required", 0)
+        if payment_amount < release_required:
+            self._json(402, {
+                "error": "payment insufficient",
+                "required": release_required,
+                "received": payment_amount,
+                "currency": token.get("currency")
+            }); return
+
+        # Q4 gate on release record
+        release_content = f"RELEASE|{token_byteid}|{payment_ref}|{payment_amount}|{payment_proof}"
+        release_byteid  = fold_to_byteid(release_content)
+        anchor = q4_anchor_record(release_byteid, "RELEASE", token.get("amount", 0), token.get("currency","USD"), {
+            "token_byteid":  token_byteid,
+            "payment_ref":   payment_ref,
+            "payment_proof": payment_proof,
+        })
+        if not anchor["q4_pass"]:
+            self._json(422, {"error": "Q4 gate failed on release record", "score": anchor["q4_score"]}); return
+
+        release_entry = {
+            **token,
+            "ts_released":   ts,
+            "release_byteid":release_byteid,
+            "payment_ref":   payment_ref,
+            "payment_amount":payment_amount,
+            "payment_proof": payment_proof,
+            "state":         "RELEASED",
+            "anchor_release_42000":   anchor["calldata_42000"],
+            "anchor_release_polygon": anchor["calldata_polygon"],
+            "note": "Tokens released. Available on chain 42000 + X-chains after cascade."
+        }
+        token_ledger_append(release_entry)
+        ledger_append({**release_entry, "type": "RELEASE"})
+
+        log.info(f"RELEASE: {token_byteid} | {token.get('amount')} {token.get('currency')} | payment={payment_amount} ref={payment_ref}")
+        self._json(200, {
+            "status":          "RELEASED",
+            "token_byteid":    token_byteid,
+            "release_byteid":  release_byteid,
+            "payment_ref":     payment_ref,
+            "anchor_42000":    anchor["calldata_42000"],
+            "note":            release_entry["note"]
+        })
 
     def _json(self, code: int, body: dict):
         resp = json.dumps(body, indent=2).encode()
