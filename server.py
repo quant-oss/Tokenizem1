@@ -28,8 +28,8 @@ CFG = {
     "omnl_creds":   base64.b64encode(b"app.omnl:S!Tw'+LHT(Twxi+BE3sk").decode(),
     "omnl_tenant":  "omnl",
     "accounts": {
-        "USD": {"savingsId": 62, "accountNo": "000000062", "iban": "LU680010000000000062", "bic": "QVTXBIC0XXX"},
-        "EUR": {"savingsId": 63, "accountNo": "000000063", "iban": "DE28500700100000000063", "bic": "QVTXBIC0XXX"},
+        "USD": {"savingsId": 62, "accountNo": "000000062", "iban": "LU680010000000000062"},
+        "EUR": {"savingsId": 63, "accountNo": "000000063", "iban": "DE28500700100000000063"},
     },
     "byteid_api":   "https://66.29.143.215:5002/api/fold",
     "ledger_path":  "/opt/shawn-m1/ledger/registrations.jsonl",
@@ -285,7 +285,7 @@ class M1IntakeHandler(BaseHTTPRequestHandler):
         if self.path == "/health":
             # Public health — Shawn's account info only; no internal platform IDs
             accts = {
-                ccy: {"accountNo": v["accountNo"], "iban": v["iban"], "bic": v["bic"]}
+                ccy: {"accountNo": v["accountNo"], "iban": v["iban"]}
                 for ccy, v in CFG["accounts"].items()
             }
             self._json(200, {
