@@ -44,23 +44,52 @@ os.makedirs("/opt/shawn-m1/ledger", exist_ok=True)
 
 # ── Q4 Coherence Gate ────────────────────────────────────────────────────
 def q4_coherence_score(xml_text: str) -> float:
-    """Score the pacs.008 message against the Q4 golden ratio gate."""
-    text = xml_text.upper()
-    bases = {"A": 0, "C": 1, "G": 2, "T": 3}
-    base_counts = {b: 0 for b in "ACGT"}
-    for ch in text:
-        if ch in base_counts:
-            base_counts[ch] += 1
-    total = sum(base_counts.values())
-    if total == 0:
+    """
+    Score an ISO 20022 message on structural integrity (Q4 semantic gate).
+    Accumulates score from structural validators; threshold = 1/phi = 0.618034.
+    Weights chosen so a fully valid pacs.008 scores >= 0.75.
+    """
+    score = 0.0
+    # Valid XML parses                           +0.30
+    # Strip XML declaration — ET.fromstring rejects encoding= in declaration
+    xml_body = xml_text.strip()
+    if xml_body.startswith("<?xml"):
+        end = xml_body.find("?>")
+        xml_body = xml_body[end + 2:].strip() if end != -1 else xml_body
+    try:
+        root = ET.fromstring(xml_body)
+        score += 0.30
+    except Exception:
         return 0.0
-    freqs = [base_counts[b] / total for b in "ACGT"]
-    # Score = 1 - std_dev (higher when frequencies are balanced ~ golden ratio distribution)
-    mean = sum(freqs) / 4
-    variance = sum((f - mean) ** 2 for f in freqs) / 4
-    std_dev = variance ** 0.5
-    score = max(0.0, 1.0 - std_dev * 4)
-    return round(score, 6)
+    # ISO 20022 namespace present                +0.15
+    if "iso:std:iso:20022" in xml_text:
+        score += 0.15
+    # Helper: find by local tag name ignoring namespace
+    def _find(tag):
+        for el in root.iter():
+            if el.tag.split("}")[-1] == tag:
+                return el
+        return None
+    # Has settlement amount element              +0.15
+    amt = _find("IntrBkSttlmAmt") or _find("TtlIntrBkSttlmAmt") or _find("TxAmt")
+    if amt is not None:
+        score += 0.15
+        # Amount value > 0                       +0.10
+        try:
+            if float(amt.text or "0") > 0:
+                score += 0.10
+        except (ValueError, TypeError):
+            pass
+    # Has end-to-end or transaction reference    +0.15
+    ref = _find("EndToEndId") or _find("TxId") or _find("MsgId")
+    if ref is not None and ref.text:
+        score += 0.15
+    # Has creditor or debtor element             +0.10
+    if _find("Cdtr") is not None or _find("Dbtr") is not None:
+        score += 0.10
+    # Raw structural score compared directly to 1/phi threshold (0.618034)
+    # 4+ checks passing = score >= 0.70 > 0.618034 = PASS
+    return round(min(score, 1.0), 6)
 
 def q4_gate_pass(xml_text: str) -> tuple:
     score = q4_coherence_score(xml_text)
@@ -140,10 +169,15 @@ def parse_pacs008(xml_text: str) -> dict:
             if r is None:
                 r = root.find(path.replace("p:", "").replace("{urn:iso:std:iso:20022:tech:xsd:pacs.008.001.10}", ""))
             return r
-        amt_el  = root.find(".//{*}IntrBkSttlmAmt") or root.find(".//{*}TxAmt")
+        def _get(tag):
+            for el in root.iter():
+                if el.tag.split("}")[-1] == tag:
+                    return el
+            return None
+        amt_el  = _get("IntrBkSttlmAmt") or _get("TxAmt")
         ccy     = amt_el.get("Ccy", "USD") if amt_el is not None else "USD"
         amount  = float(amt_el.text or "0") if amt_el is not None else 0.0
-        ref_el  = root.find(".//{*}EndToEndId") or root.find(".//{*}TxId")
+        ref_el  = _get("EndToEndId") or _get("TxId")
         tx_ref  = ref_el.text if ref_el is not None else f"M1-{int(time.time())}"
         return {"ccy": ccy, "amount": amount, "tx_ref": tx_ref, "raw_hash": hashlib.sha256(xml_text.encode()).hexdigest()[:16]}
     except Exception as e:
@@ -258,7 +292,7 @@ class M1IntakeHandler(BaseHTTPRequestHandler):
   <div style="font-size:11px;color:#aaa">{len(entries)} total</div>
 </div>
 <div class="kpi-row">
-  <div class="kpi"><label>Total Received</label><div class="val">{len([e for e in entries if 'RECEIVED' in e.get('status',''')])}</div></div>
+  <div class="kpi"><label>Total Received</label><div class="val">{len([e for e in entries if "RECEIVED" in e.get("status", "")])}</div></div>
   <div class="kpi"><label>USD Acct</label><div class="val" style="font-size:13px">{CFG['accounts']['USD']['accountNo']}</div><div style="font-size:10px;color:#888">{CFG['accounts']['USD']['iban']}</div></div>
   <div class="kpi"><label>EUR Acct</label><div class="val" style="font-size:13px">{CFG['accounts']['EUR']['accountNo']}</div><div style="font-size:10px;color:#888">{CFG['accounts']['EUR']['iban']}</div></div>
   <div class="kpi"><label>Q4 Threshold</label><div class="val">{CFG['q4']['phi_inv']}</div><div style="font-size:10px;color:#888">1/φ golden ratio</div></div>
