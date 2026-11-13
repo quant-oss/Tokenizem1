@@ -21,14 +21,15 @@ log = logging.getLogger("shawn-m1")
 
 # ── Config ──────────────────────────────────────────────────────────────
 CFG = {
-    "container_id": "SHAWN-Q4-M1-CONTAINER-001",
+    "container_id": "SHAWN-M1-CONTAINER-001",
     "byteid":       "QVTX-53686177-6e204d31-1a1d2226-436f",
+    "container_ref":"SM1-53686177-6e204d31",
     "omnl_base":    "https://omnl.hybxfinance.io/fineract-provider/api/v1",
     "omnl_creds":   base64.b64encode(b"app.omnl:S!Tw'+LHT(Twxi+BE3sk").decode(),
     "omnl_tenant":  "omnl",
     "accounts": {
-        "USD": {"savingsId": 62, "accountNo": "000000062", "iban": "LU680010000000000062"},
-        "EUR": {"savingsId": 63, "accountNo": "000000063", "iban": "DE28500700100000000063"},
+        "USD": {"savingsId": 62, "accountNo": "000000062", "iban": "LU680010000000000062", "bic": "QVTXBIC0XXX"},
+        "EUR": {"savingsId": 63, "accountNo": "000000063", "iban": "DE28500700100000000063", "bic": "QVTXBIC0XXX"},
     },
     "byteid_api":   "https://66.29.143.215:5002/api/fold",
     "ledger_path":  "/opt/shawn-m1/ledger/registrations.jsonl",
@@ -255,7 +256,7 @@ def build_camt054(tx_ref: str, amount: float, ccy: str, byteid: str) -> str:
     <GrpHdr>
       <MsgId>CAMT054-{tx_ref}</MsgId>
       <CreDtTm>{ts}</CreDtTm>
-      <AddtlInf>QVTX-Q4-CONTAINER ByteID:{byteid}</AddtlInf>
+      <AddtlInf>M1-CONTAINER Ref:{CFG["container_ref"]}</AddtlInf>
     </GrpHdr>
     <Ntfctn>
       <Id>{CFG["container_id"]}</Id>
@@ -269,7 +270,7 @@ def build_camt054(tx_ref: str, amount: float, ccy: str, byteid: str) -> str:
         <Sts><Cd>BOOK</Cd></Sts>
         <BookgDt><DtTm>{ts}</DtTm></BookgDt>
         <NtryRef>{tx_ref}</NtryRef>
-        <AddtlNtryInf>ByteID:{byteid} Q4:PASSED</AddtlNtryInf>
+        <AddtlNtryInf>Ref:{CFG["container_ref"]} Status:BOOKED</AddtlNtryInf>
       </Ntry>
     </Ntfctn>
   </BkToCstmrDbtCdtNtfctn>
@@ -282,8 +283,16 @@ class M1IntakeHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/health":
-            self._json(200, {"status": "alive", "container": CFG["container_id"],
-                             "byteid": CFG["byteid"], "accounts": CFG["accounts"]})
+            # Public health — Shawn's account info only; no internal platform IDs
+            accts = {
+                ccy: {"accountNo": v["accountNo"], "iban": v["iban"], "bic": v["bic"]}
+                for ccy, v in CFG["accounts"].items()
+            }
+            self._json(200, {
+                "status":    "alive",
+                "container": CFG["container_ref"],
+                "accounts":  accts
+            })
         elif self.path == "/ledger":
             accept = self.headers.get("Accept", "")
             if "text/html" in accept:
@@ -351,15 +360,15 @@ class M1IntakeHandler(BaseHTTPRequestHandler):
   .footer{{font-size:10px;color:#888;border-top:1px solid #cfcfcf;padding-top:8px;margin-top:12px}}
 </style></head><body>
 <div class="header">
-  <div><h1>SHAWN M1 Q4 CONTAINER — LEDGER</h1>
-  <div class="sub">ByteID: {CFG['byteid']} · ISO 20022 pacs.008 Auto-Receive · Refreshes every 15s</div></div>
+  <div><h1>SHAWN M1 CONTAINER — REGISTRATION LEDGER</h1>
+  <div class="sub">Ref: {CFG['container_ref']} · ISO 20022 Auto-Receive · Refreshes every 15s</div></div>
   <div style="font-size:11px;color:#aaa">{len(entries)} total</div>
 </div>
 <div class="kpi-row">
   <div class="kpi"><label>Total Received</label><div class="val">{len([e for e in entries if "RECEIVED" in e.get("status", "")])}</div></div>
-  <div class="kpi"><label>USD Acct</label><div class="val" style="font-size:13px">{CFG['accounts']['USD']['accountNo']}</div><div style="font-size:10px;color:#888">{CFG['accounts']['USD']['iban']}</div></div>
-  <div class="kpi"><label>EUR Acct</label><div class="val" style="font-size:13px">{CFG['accounts']['EUR']['accountNo']}</div><div style="font-size:10px;color:#888">{CFG['accounts']['EUR']['iban']}</div></div>
-  <div class="kpi"><label>Q4 Threshold</label><div class="val">{CFG['q4']['phi_inv']}</div><div style="font-size:10px;color:#888">1/φ golden ratio</div></div>
+  <div class="kpi"><label>USD Account</label><div class="val" style="font-size:13px">{CFG['accounts']['USD']['accountNo']}</div><div style="font-size:10px;color:#888">{CFG['accounts']['USD']['iban']}</div></div>
+  <div class="kpi"><label>EUR Account</label><div class="val" style="font-size:13px">{CFG['accounts']['EUR']['accountNo']}</div><div style="font-size:10px;color:#888">{CFG['accounts']['EUR']['iban']}</div></div>
+  <div class="kpi"><label>Coherence Gate</label><div class="val">{CFG['q4']['phi_inv']}</div><div style="font-size:10px;color:#888">minimum threshold</div></div>
 </div>
 <div class="section">
   <div class="section-head">REGISTRATION LEDGER — LAST 100</div>
@@ -367,7 +376,7 @@ class M1IntakeHandler(BaseHTTPRequestHandler):
   {rows if rows else '<tr><td colspan="8" style="padding:16px;text-align:center;color:#888">No registrations yet</td></tr>'}
   </table>
 </div>
-<div class="footer">Container: {CFG['container_id']} · OMNL clientId 30 · omnl.hybxfinance.io · NOT published publicly</div>
+<div class="footer">Container: {CFG['container_ref']} · USD IBAN: {CFG['accounts']['USD']['iban']} · EUR IBAN: {CFG['accounts']['EUR']['iban']}</div>
 </body></html>"""
         resp = html.encode()
         self.send_response(200)
@@ -441,9 +450,9 @@ class M1IntakeHandler(BaseHTTPRequestHandler):
         camt = build_camt054(tx_ref, amount, ccy, byteid)
         self.send_response(200)
         self.send_header("Content-Type", "application/xml")
-        self.send_header("X-QVTX-ByteID", byteid)
-        self.send_header("X-QVTX-Q4-Score", str(q4_score))
-        self.send_header("X-QVTX-Status", "RECEIVED")
+        self.send_header("X-M1-ContainerID", CFG["container_ref"])
+        self.send_header("X-M1-Score", str(q4_score))
+        self.send_header("X-M1-Status", "RECEIVED")
         self.end_headers()
         self.wfile.write(camt.encode())
 
@@ -508,8 +517,8 @@ class M1IntakeHandler(BaseHTTPRequestHandler):
         log.info(f"TOKENIZE: {token_byteid} | {amount} {currency} | HELD | reserve={reserve_required} | release_req={release_required}")
         self.send_response(202)
         self.send_header("Content-Type", "application/json")
-        self.send_header("X-QVTX-Token-ByteID", token_byteid)
-        self.send_header("X-QVTX-Q4-Score", str(anchor["q4_score"]))
+        self.send_header("X-M1-Token-ID", token_byteid)
+        self.send_header("X-M1-Score", str(anchor["q4_score"]))
         self.end_headers()
         self.wfile.write(json.dumps({
             "status":           "MINTED_HELD",
