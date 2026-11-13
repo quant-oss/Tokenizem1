@@ -183,6 +183,8 @@ def fold_to_byteid(content: str) -> str:
 
 # ── OMNL Credit ──────────────────────────────────────────────────────────
 def omnl_credit(currency: str, amount: float, tx_ref: str) -> dict:
+    if not CFG.get("omnl_base"):
+        return {"ok": True, "skipped": "credit endpoint not configured"}
     acct = CFG["accounts"].get(currency)
     if not acct:
         return {"error": f"no account for {currency}"}
