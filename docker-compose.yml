@@ -1,9 +1,12 @@
 version: "3.9"
 
+# SHAWN M1 — ISO 20022 Tokenization Container
+# Image: ghcr.io/qvtxsm1/tokenizem1:latest
+# Ref:   SM1-53686177-6e204d31
+
 services:
   shawn-m1:
-    build: .
-    image: qvtx/shawn-m1-intake:latest
+    image: ghcr.io/qvtxsm1/tokenizem1:latest
     container_name: shawn-m1
     restart: always
     ports:
@@ -11,10 +14,10 @@ services:
     volumes:
       - shawn_ledger:/opt/shawn-m1/ledger
       - shawn_logs:/opt/shawn-m1/logs
-    environment:
-      - M1_PORT=42881
+    env_file:
+      - .env
     healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8881/health')"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:42881/health')"]
       interval: 30s
       timeout: 5s
       retries: 3

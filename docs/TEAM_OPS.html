@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shawn M1 — QVTX Team Ops</title>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#f5f5f5; --content:#ffffff; --border:#cfcfcf; --text:#000000; --head:#e8e8e8; --accent:#1a3a5c; --green:#2d6a2d; --red:#8b1a1a; --yellow:#7a6000; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'Open Sans',sans-serif; font-size:13px; background:var(--bg); color:var(--text); padding:24px; }
+  .page { max-width:1000px; margin:0 auto; }
+  .header { background:var(--accent); color:#fff; padding:14px 20px; border-radius:4px 4px 0 0; display:flex; align-items:center; justify-content:space-between; }
+  .header h1 { font-size:16px; font-weight:700; letter-spacing:.02em; }
+  .header .meta { font-size:11px; opacity:.8; }
+  .panel { background:var(--content); border:1px solid var(--border); border-top:none; margin-bottom:16px; }
+  .panel.first { border-top:1px solid var(--border); }
+  .panel-head { background:var(--head); border-bottom:1px solid var(--border); padding:6px 14px; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); }
+  .panel-body { padding:14px; }
+  table { width:100%; border-collapse:collapse; }
+  th { background:var(--head); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; padding:4px 8px; text-align:left; border:1px solid var(--border); }
+  td { padding:4px 8px; border:1px solid var(--border); font-size:12px; vertical-align:top; }
+  code, pre { font-family:'Courier New',monospace; font-size:12px; }
+  pre { background:var(--bg); border:1px solid var(--border); padding:10px 12px; border-radius:3px; overflow-x:auto; margin:8px 0; white-space:pre-wrap; }
+  .badge { display:inline-block; padding:1px 7px; border-radius:2px; font-size:11px; font-weight:700; }
+  .badge.green { background:#d4edda; color:var(--green); border:1px solid #b8dac1; }
+  .badge.red { background:#f8d7da; color:var(--red); border:1px solid #f1aeb5; }
+  .badge.yellow { background:#fff3cd; color:var(--yellow); border:1px solid #ffe69c; }
+  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:0 16px; margin-bottom:16px; }
+  .two-col .panel { margin-bottom:0; border-top:1px solid var(--border); }
+  .iban { font-family:'Courier New',monospace; font-size:11px; letter-spacing:.03em; }
+  p.note { font-size:12px; margin-top:8px; color:#444; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="header">
+  <h1>Shawn M1 — QVTX Team Operations</h1>
+  <div class="meta">SM1-53686177-6e204d31 &nbsp;·&nbsp; qxrp :42881 &nbsp;·&nbsp; 2026-11-13</div>
+</div>
+
+<div class="panel first">
+  <div class="panel-head">Services — both enabled in multi-user.target.wants</div>
+  <div class="panel-body">
+    <table>
+      <tr><th>Unit</th><th>Purpose</th><th>Status</th></tr>
+      <tr><td><code>qvtx-shawn-m1.service</code></td><td>Podman container, Restart=always, EnvironmentFile=/etc/shawn-m1.env</td><td><span class="badge green">ACTIVE</span></td></tr>
+      <tr><td><code>qvtx-shawn-m1-he.service</code></td><td>socat IPv6 HE bridge → [2001:470:1f27:a5::1]:42881 → 127.0.0.1:42881</td><td><span class="badge green">ACTIVE</span></td></tr>
+    </table>
+    <pre>systemctl status qvtx-shawn-m1.service
+systemctl status qvtx-shawn-m1-he.service</pre>
+  </div>
+</div>
+
+<div class="two-col">
+  <div class="panel">
+    <div class="panel-head">Endpoints</div>
+    <div class="panel-body">
+      <table>
+        <tr><th>Path</th><th>Method</th></tr>
+        <tr><td><code>/health</code></td><td>GET</td></tr>
+        <tr><td><code>/receive</code> <code>/m1</code></td><td>POST pacs.008.001.10</td></tr>
+        <tr><td><code>/tokenize</code></td><td>POST JSON</td></tr>
+        <tr><td><code>/release</code></td><td>POST JSON</td></tr>
+        <tr><td><code>/token/{id}</code></td><td>GET</td></tr>
+        <tr><td><code>/ledger</code></td><td>GET JSON</td></tr>
+        <tr><td><code>/</code></td><td>GET HTML ledger</td></tr>
+      </table>
+      <pre style="margin-top:10px">IPv6: [2001:470:1f27:a5::1]:42881</pre>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">Accounts</div>
+    <div class="panel-body">
+      <table>
+        <tr><th>CCY</th><th>Acct</th><th>IBAN</th></tr>
+        <tr><td>USD</td><td>000000062</td><td class="iban">LU680010000000000062</td></tr>
+        <tr><td>EUR</td><td>000000063</td><td class="iban">DE28500700100000000063</td></tr>
+      </table>
+      <table style="margin-top:10px">
+        <tr><th>Volume</th><th>Path</th></tr>
+        <tr><td><code>shawn_m1_ledger</code></td><td><code>/opt/shawn-m1/ledger/</code></td></tr>
+        <tr><td><code>shawn_m1_logs</code></td><td><code>/opt/shawn-m1/logs/</code></td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-head">Q4 Coherence Gate</div>
+  <div class="panel-body">
+    <table>
+      <tr><th>Parameter</th><th>Value</th><th>Notes</th></tr>
+      <tr><td>Threshold (1/φ)</td><td><code>0.618034</code></td><td>Golden ratio gate — raw structural score</td></tr>
+      <tr><td>Coherence target</td><td><code>0.882</code></td><td>Q4 codon coherence</td></tr>
+      <tr><td>Frequency</td><td><code>8825 Hz</code></td><td>Q4 carrier frequency</td></tr>
+      <tr><td>Scoring components</td><td colspan="2">XML parse (+0.30) · ISO namespace (+0.15) · Amount element (+0.25) · EndToEndId (+0.15) · Parties (+0.10)</td></tr>
+      <tr><td>Below threshold</td><td><span class="badge red">HTTP 400 Q4_REJECT</span></td><td>Logged, no credit posted</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-head">ByteID Identity Chain (per tokenization event)</div>
+  <div class="panel-body">
+    <table>
+      <tr><th>Layer</th><th>Fold Input</th><th>Purpose</th></tr>
+      <tr><td>L0</td><td>pacs.008 XML</td><td>M1 intake identity</td></tr>
+      <tr><td>L1</td><td>reserve commitment record</td><td>20% reserve lock</td></tr>
+      <tr><td>L2</td><td>token mint record</td><td>Token identity</td></tr>
+      <tr><td>L3</td><td>release payment proof</td><td>10% fiat receipt</td></tr>
+      <tr><td>L4</td><td>x-chain deploy record</td><td>X-chain cascade anchor</td></tr>
+    </table>
+    <p class="note">Each ByteID: sense + shadow (reverse-complement). <code>recover(sense) == original content</code>. verify_v3 = REAL on every fold.</p>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-head">Tokenization Protocol</div>
+  <div class="panel-body">
+    <table>
+      <tr><th>Rule</th><th>Formula</th><th>Example — $50,000 intake</th></tr>
+      <tr><td>Reserve held on mint</td><td><code>amount × 0.20</code></td><td>$10,000 held</td></tr>
+      <tr><td>Fiat required to release</td><td><code>amount × 0.10</code></td><td>$5,000 fiat payment</td></tr>
+    </table>
+    <pre style="margin-top:10px">State machine:  MINTED_HELD → (10% fiat received) → RELEASED
+
+Chain 42000 anchor:  calldata = "QVTX-TOKENIZE {token_byteid}"  (self-tx, value=0, Paris EVM)
+Polygon anchor:      type-2 self-tx, JSON record (event/amount/reserve/release/ts)
+Both tx hashes journaled + re-read to confirm calldata.</pre>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-head">Update / Redeploy</div>
+  <div class="panel-body">
+    <pre>ssh root@qxrp
+cd /opt/shawn-m1-intake
+git pull origin main
+podman build -t qvtx/shawn-m1-intake:latest .
+systemctl restart qvtx-shawn-m1.service</pre>
+    <table style="margin-top:10px">
+      <tr><th>Item</th><th>Location</th></tr>
+      <tr><td>Source repo</td><td><code>qvtxsm1/Tokenizem1</code> (private, standalone)</td></tr>
+      <tr><td>Credentials</td><td><code>/etc/shawn-m1.env</code> (server only, 600 perms — never in repo)</td></tr>
+      <tr><td>Deploy key</td><td><code>/root/.ssh/sm1_tokenize_deploy</code></td></tr>
+      <tr><td>Env vars</td><td><code>M1_CREDIT_BASE</code> · <code>M1_CREDIT_CREDS</code> · <code>M1_CREDIT_TENANT</code></td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-head">Staged Items</div>
+  <div class="panel-body">
+    <table>
+      <tr><th>Item</th><th>Status</th><th>Unblocks</th></tr>
+      <tr><td>X-chain cascade (Polygon, D-BIS chain 138, chain 8825)</td><td><span class="badge yellow">STAGED</span></td><td>Operator names target per tokenization event</td></tr>
+      <tr><td>Token contract deploy — chain 42000 (Paris EVM, no PUSH0)</td><td><span class="badge yellow">STAGED</span></td><td>Authorized <code>--execute</code></td></tr>
+      <tr><td>Pool creation — chain 42000 (token/QUSD pair)</td><td><span class="badge yellow">STAGED</span></td><td>After token contract deploy</td></tr>
+      <tr><td>Release gate auto-watch service</td><td><span class="badge yellow">STAGED</span></td><td>Supercore (203.161.33.24) online</td></tr>
+      <tr><td>QDP receiver registration for Shawn in qdp_receivers.json</td><td><span class="badge yellow">STAGED</span></td><td>Supercore online</td></tr>
+    </table>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

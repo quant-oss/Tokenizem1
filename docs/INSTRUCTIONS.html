@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>M1 Container — Instructions</title>
+<style>
+  :root { --bg:#ffffff; --panel:#f5f5f5; --border:#cfcfcf; --text:#000000; --accent:#1a1a2e; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'Segoe UI',Arial,sans-serif; font-size:14px; background:var(--bg); color:var(--text); padding:40px; max-width:800px; margin:0 auto; }
+  h1 { font-size:22px; font-weight:700; margin-bottom:4px; color:var(--accent); }
+  .meta { font-size:12px; color:#666; margin-bottom:32px; }
+  h2 { font-size:15px; font-weight:600; margin:28px 0 12px; color:var(--accent); border-bottom:1px solid var(--border); padding-bottom:6px; }
+  table { width:100%; border-collapse:collapse; margin-bottom:16px; }
+  th { background:var(--panel); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.04em; padding:8px 10px; text-align:left; border:1px solid var(--border); }
+  td { padding:8px 10px; border:1px solid var(--border); font-size:13px; }
+  code { font-family:'Courier New',monospace; font-size:12px; background:var(--panel); padding:2px 5px; border-radius:3px; }
+  pre { background:var(--panel); border:1px solid var(--border); border-radius:4px; padding:14px; font-family:'Courier New',monospace; font-size:12px; overflow-x:auto; margin:12px 0; }
+  .steps { counter-reset:step; list-style:none; padding:0; }
+  .steps li { counter-increment:step; padding:8px 0 8px 32px; position:relative; border-bottom:1px solid var(--border); }
+  .steps li:before { content:counter(step); position:absolute; left:0; top:8px; background:var(--accent); color:#fff; width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; }
+  .tag { display:inline-block; padding:2px 8px; border-radius:3px; font-size:11px; font-weight:600; }
+  .tag.held { background:#fff3cd; color:#856404; }
+  .tag.released { background:#d4edda; color:#155724; }
+</style>
+</head>
+<body>
+<h1>M1 Container — How to Send &amp; Tokenize</h1>
+<div class="meta">Container: SM1-53686177-6e204d31 &nbsp;·&nbsp; Updated: 2026-11-13</div>
+
+<h2>Your Accounts</h2>
+<table>
+  <tr><th>Currency</th><th>Account Number</th><th>IBAN</th></tr>
+  <tr><td>USD</td><td>000000062</td><td><code>LU680010000000000062</code></td></tr>
+  <tr><td>EUR</td><td>000000063</td><td><code>DE28500700100000000063</code></td></tr>
+</table>
+
+<h2>How to Send</h2>
+<p style="margin-bottom:12px">Send an ISO 20022 pacs.008 payment to either IBAN above. The container receives it, posts the credit, and returns a camt.054 confirmation automatically.</p>
+<p><strong>Receive endpoint:</strong></p>
+<pre>POST http://[2001:470:1f27:a5::1]:42881/receive
+Content-Type: application/xml
+Body: pacs.008.001.10 XML</pre>
+
+<h2>What Happens on Receipt</h2>
+<ol class="steps">
+  <li>Payment received and coherence-validated</li>
+  <li>Credit posted to your account for that currency</li>
+  <li>camt.054 credit notification returned immediately</li>
+  <li>Transaction recorded in ledger with ByteID</li>
+</ol>
+
+<h2>Tokenization</h2>
+<table>
+  <tr><th>Rule</th><th>Amount</th></tr>
+  <tr><td>Reserve held on mint</td><td>20% of payment amount</td></tr>
+  <tr><td>Fiat required to release tokens</td><td>10% of payment amount</td></tr>
+</table>
+<p style="margin-bottom:12px">Example — $50,000 received: $10,000 held on reserve. Pay $5,000 fiat → tokens released.</p>
+<p><span class="tag held">HELD</span> &nbsp;→&nbsp; (10% fiat payment) &nbsp;→&nbsp; <span class="tag released">RELEASED</span></p>
+
+<h2>Check Your Ledger</h2>
+<pre>GET http://[2001:470:1f27:a5::1]:42881/        # HTML ledger
+GET http://[2001:470:1f27:a5::1]:42881/health   # Status + account info
+GET http://[2001:470:1f27:a5::1]:42881/token/{id}  # Token state</pre>
+
+<h2>Release Tokens</h2>
+<pre>POST http://[2001:470:1f27:a5::1]:42881/release
+Content-Type: application/json
+
+{
+  "token_id":          "...",
+  "payment_ref":       "...",
+  "payment_amount":    5000.00,
+  "payment_currency":  "USD",
+  "payment_proof":     "swift-ref or txhash"
+}</pre>
+</body>
+</html>
