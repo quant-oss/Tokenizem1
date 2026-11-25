@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>QVTX M1 Onledger — Client Connection Sheet</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Courier New', monospace; background: #0a0a0a; color: #e0e0e0; padding: 40px; max-width: 820px; margin: auto; }
+  h1 { color: #00ff88; font-size: 1.2rem; letter-spacing: 2px; border-bottom: 1px solid #00ff8840; padding-bottom: 10px; margin-bottom: 24px; }
+  h2 { color: #00ccff; font-size: 0.78rem; letter-spacing: 1.5px; text-transform: uppercase; margin: 20px 0 8px; }
+  .block { background: #111; border: 1px solid #1e1e1e; border-left: 3px solid #00ff88; padding: 12px 16px; margin-bottom: 8px; }
+  .label { color: #555; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 3px; }
+  .value { color: #fff; font-size: 0.86rem; word-break: break-all; }
+  .iban { color: #00ff88; font-size: 1rem; font-weight: bold; letter-spacing: 1px; }
+  .row { display: flex; gap: 10px; }
+  .row .block { flex: 1; }
+  .endpoint { background: #0d1a0d; border-left: 3px solid #00ff88; padding: 10px 14px; margin: 4px 0; font-size: 0.8rem; }
+  .method { color: #ffcc44; margin-right: 8px; font-weight: bold; }
+  .path { color: #aaffaa; }
+  .desc { color: #666; font-size: 0.72rem; margin-top: 2px; }
+  .flow { counter-reset: s; }
+  .step { counter-increment: s; padding: 7px 0 7px 28px; position: relative; font-size: 0.8rem; border-bottom: 1px solid #161616; color: #ccc; }
+  .step:last-child { border-bottom: none; }
+  .step:before { content: counter(s); position: absolute; left: 0; top: 8px; background: #00ff8818; color: #00ff88; width: 18px; height: 18px; border-radius: 50%; text-align: center; line-height: 18px; font-size: 0.68rem; }
+  .gate { background: #1a0f00; border-left: 3px solid #ff9900; padding: 10px 14px; font-size: 0.8rem; color: #ffbb44; margin: 4px 0; }
+  .live { display: inline-block; background: #00ff8820; color: #00ff88; font-size: 0.65rem; padding: 2px 6px; border-radius: 2px; vertical-align: middle; margin-left: 6px; }
+  .footer { margin-top: 24px; padding-top: 10px; border-top: 1px solid #1a1a1a; font-size: 0.65rem; color: #333; display: flex; justify-content: space-between; }
+  @media print {
+    body { background: #fff; color: #000; padding: 24px; }
+    .block, .endpoint { background: #f9f9f9; border-color: #ddd; }
+    .gate { background: #fff8ee; border-color: #cc8800; }
+    h1 { color: #000; } h2 { color: #333; }
+    .value, .iban, .path { color: #000; }
+    .method { color: #885500; }
+    .live { background: #eeffee; color: #008844; }
+    .step { color: #111; }
+    .step:before { background: #eee; color: #000; }
+  }
+</style>
+</head>
+<body>
+
+<h1>QVTX M1 ONLEDGER<br>SERVER-TO-SERVER CONNECTION SHEET <span class="live">LIVE</span></h1>
+
+<h2>Container</h2>
+<div class="row">
+  <div class="block">
+    <div class="label">Docker Image</div>
+    <div class="value">ghcr.io/quant-oss/tokenizem1:latest</div>
+  </div>
+  <div class="block">
+    <div class="label">Port</div>
+    <div class="value">42881</div>
+  </div>
+  <div class="block">
+    <div class="label">Container Ref</div>
+    <div class="value">SM1-53686177-6e204d31</div>
+  </div>
+</div>
+<div class="block">
+  <div class="label">GitHub Repository</div>
+  <div class="value">github.com/quant-oss/Tokenizem1</div>
+</div>
+
+<h2>Your Receiving Accounts</h2>
+<div class="row">
+  <div class="block">
+    <div class="label">USD Account</div>
+    <div class="iban">LU68 0010 0000 0000 0062</div>
+    <div class="value" style="margin-top:4px;color:#666;font-size:0.72rem;">Account No: 000000062</div>
+  </div>
+  <div class="block">
+    <div class="label">EUR Account</div>
+    <div class="iban">DE28 5007 0010 0000 0000 63</div>
+    <div class="value" style="margin-top:4px;color:#666;font-size:0.72rem;">Account No: 000000063</div>
+  </div>
+</div>
+
+<h2>Setup — Run the Container</h2>
+<div class="endpoint" style="margin-bottom:8px;">
+  <span class="method" style="color:#aaffaa;">1</span><span class="path">docker pull ghcr.io/quant-oss/tokenizem1:latest</span>
+  <div class="desc">Pull the isolated M1 container from GitHub Container Registry</div>
+</div>
+<div class="endpoint" style="margin-bottom:8px;">
+  <span class="method" style="color:#aaffaa;">2</span><span class="path">docker compose up -d</span>
+  <div class="desc">Start from docker-compose.yml (repo: github.com/quant-oss/Tokenizem1) — exposes port 42881</div>
+</div>
+
+<h2>Endpoints — All Local to Your Container</h2>
+<div class="endpoint">
+  <span class="method">POST</span><span class="path">http://localhost:42881/receive</span>
+  <div class="desc">Send M1 Onledger funds — body: ISO 20022 pacs.008.001.10 XML · response: camt.054 credit confirmation</div>
+</div>
+<div class="endpoint">
+  <span class="method">POST</span><span class="path">http://localhost:42881/tokenize</span>
+  <div class="desc">Tokenize a received intake — body: JSON {intake_id, amount, currency, reserve_confirmed}</div>
+</div>
+<div class="endpoint">
+  <span class="method">POST</span><span class="path">http://localhost:42881/release</span>
+  <div class="desc">Release held tokens after 10% fiat payment — body: JSON {token_id, payment_ref, payment_amount, payment_proof}</div>
+</div>
+<div class="endpoint">
+  <span class="method">GET</span><span class="path">http://localhost:42881/token/{token_id}</span>
+  <div class="desc">Token state: MINTED_HELD or RELEASED</div>
+</div>
+<div class="endpoint">
+  <span class="method">GET</span><span class="path">http://localhost:42881/health</span>
+  <div class="desc">Container status + account IBANs</div>
+</div>
+<div class="endpoint">
+  <span class="method">GET</span><span class="path">http://localhost:42881/</span>
+  <div class="desc">Live ledger of all received payments</div>
+</div>
+
+<h2>M1 → Tokenization → USDT Flow</h2>
+<div class="flow">
+  <div class="step">Pull &amp; run container: <code>docker pull ghcr.io/quant-oss/tokenizem1:latest</code> → <code>docker compose up -d</code></div>
+  <div class="step">POST pacs.008.001.10 XML to <strong>localhost:42881/receive</strong> — container validates and returns camt.054 credit confirmation</div>
+  <div class="step">POST to <strong>/tokenize</strong> with intake_id — tokens minted 1:1 with intake value, status MINTED_HELD · 20% held on reserve</div>
+  <div class="step">Submit 10% fiat release payment (USD/EUR bank or on-chain stablecoin) — POST to <strong>/release</strong></div>
+  <div class="step">Tokens released to circulation — USDT swap executes via QVTX settlement rail</div>
+</div>
+
+<h2>Gates</h2>
+<div class="gate">
+  <strong>Coherence gate:</strong> every intake is scored ≥ 0.618034 (1/φ) — a valid pacs.008 scores ~0.70 and passes automatically
+</div>
+<div class="gate">
+  <strong>Reserve gate:</strong> 20% of intake value held · <strong>Release gate:</strong> 10% fiat payment to release tokens
+</div>
+
+<h2>No API Key Required</h2>
+<div class="block">
+  <div class="value" style="font-size:0.8rem;color:#aaa;">
+    This is an isolated, dedicated container. Access is by IBAN — your clients send to the account numbers above.
+    No separate authentication header is needed. Each transaction is anchored on-chain and independently verifiable.
+  </div>
+</div>
+
+<div class="footer">
+  <span>QVTX DNA · Chain 42000 · 8825 Hz · Coherence 0.882 · Container SM1-53686177-6e204d31</span>
+  <span>Issued 2026-11-24 · QUANTVESTRIX INC.</span>
+</div>
+
+</body>
+</html>
